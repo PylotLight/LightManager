@@ -1,0 +1,13 @@
+# Please refer https://aka.ms/HTTPSinContainer on how to setup an https developer certificate for your ASP .NET Core service.
+
+version: '3.4'
+
+services:
+  lightmanagerserver:
+    image: lightmanagerserver
+    build:
+      context: .
+      dockerfile: Server/Dockerfile
+    ports:
+      - 7001:7001
+      - 7000:7000

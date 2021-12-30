@@ -1,0 +1,167 @@
+﻿@page "/Tasks"
+@using LightManager.Shared
+@using LightManager.Shared.Models
+@using System.Web
+@inject HttpClient Http
+@*
+TODO//
+Get matching .torrent and magnet files and list them and download details ready to approve for upload/download
+Collect errors ready for displaying on logs page
+have download progress page with links to any errors.
+
+get torrent and magnet files to vol1 from *arr
+set location in app to where files are stored so it can read them.
+process the files.
+ability to select episodes/files from each file.
+
+
+properties to define - folder location
+where to move torrent files
+RD API key
+
+
+*@
+
+<PageTitle>Tasks</PageTitle>
+
+<h1>Tasks</h1>
+@* <EditForm class="container" Model="settings">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label for="title">Title</label>
+            <InputText placeholder="/"  @bind-Value="settings.ImportPath" class="form-control"/>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <InputTextArea id="description" @bind-Value="SelectedCoffee.Description" placeholder="Description..." class="form-control" rows="7" />
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <button type="submit" class="btn btn-success">Save</button>
+            </div>
+            <div class="col">
+                <button type="button" @onclick="FolderPicker" class="btn btn-danger float-right">Submit</button>
+            </div>
+        </div>
+    </EditForm>
+    *@
+
+
+@if (tasks is null & torrentInfo is null)
+{
+	<p><em>Loading...</em></p>
+}
+else if (torrentInfo is null || tasks is not null)
+{
+	<table class="col-md-12 table-bordered table-striped table-condensed cf">
+		<tr>
+			<th>#</th>
+			<th>Description</th>
+			<th>Filename</th>
+            <th>LastModified</th>
+            <th>MagnetLink</th>
+		</tr>
+
+		@foreach (var item in tasks)
+		{
+			<tr>
+				<td><input type="checkbox" @bind-value=item.Download/></td>
+				<td>@item.Description</td>
+				<td>@item.Filename</td>
+                <td>@item.LastModified</td>
+                <td>@(string.Concat(@item.MagnetLink.Take(20)))</td>
+			</tr>
+		}
+
+
+
+</table>
+<input type="submit" value="Submit" @onclick=AddSelectedTorrents/>
+}
+
+@if (torrentInfo is not null)
+{
+	<table class="col-md-12 table-bordered table-striped table-condensed cf">
+		<tr>
+			<th></th>
+			<th>ID</th>
+			<th>Filename</th>
+            <th>Progress</th>
+		</tr>
+
+		@foreach (var item in torrentInfo)
+		{
+			<tr>
+                <td></td>
+				<td>@item.id</td>
+				<td>@item.filename</td>
+                <td>@item.progress</td>
+            </tr>
+            foreach(var file in @item.files)
+            {
+            <tr>
+				<td><input type="checkbox" @bind-value=file.selected/></td>
+				<td>@file.id</td>
+				<td>@file.path</td>
+                <td></td>
+            </tr>
+            }
+        }
+
+
+
+</table>
+<input type="submit" value="Submit" @onclick=SelectFiles/>
+}
+
+
+
+
+@code {
+    //private string[] logCount = new String[3] { "test", "test2", "test32" };
+    //private LogObject logBject;
+    //private WeatherForecast[]? forecasts;
+    private AppSettings? settings = new AppSettings();
+    //private FolderObject? folderObject = new FolderObject();
+    private List<DLTask> tasks = new List<DLTask>();
+    private  List<RDTorrentInfo> torrentInfo = null;
+    //private string Path { get; set; } = "/";
+
+    protected override async Task OnInitializedAsync()
+    {
+        //properties = await Http.GetFromJsonAsync<SystemProperties>("SystemProperties/"+CurrentPath); 
+        //folderObject = await Http.GetFromJsonAsync<FolderObject>($"Tasks?Path={HttpUtility.UrlEncode(Path)}");
+        //Console.WriteLine(folderObject);
+        //await Task.Delay(000);
+        //forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("WeatherForecast"); 
+        await TaskProcessor();
+    }
+    private async Task TaskProcessor()
+    {
+        tasks = await Http.GetFromJsonAsync<List<DLTask>>($"api/Tasks/GetTasks");
+        //Console.WriteLine(tasks);
+    }
+
+    private async Task AddSelectedTorrents()
+    {
+        HttpResponseMessage responseMessage = await Http.PostAsJsonAsync<List<DLTask>>("api/Tasks/AddSelected",tasks);
+        Console.WriteLine(await responseMessage.Content.ReadAsStringAsync());
+        torrentInfo = await responseMessage.Content.ReadFromJsonAsync<List<RDTorrentInfo>>();
+        tasks = null;
+    }
+
+    private async Task SelectFiles()
+    {
+        HttpResponseMessage responseMessage = await Http.PostAsJsonAsync<List<RDTorrentInfo>>("api/Tasks/SelectFiles",torrentInfo);
+        Console.WriteLine(await responseMessage.Content.ReadAsStringAsync());
+        //torrentInfo = await responseMessage.Content.ReadFromJsonAsync<List<RDTorrentInfo>>();
+           // = await files.Content.ReadFromJsonAsync<RDTorrentInfo>();
+    }
+
+
+
+}
