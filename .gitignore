@@ -365,3 +365,4 @@ Files/*
 Server/Properties/*
 Client/Properties/*
 Server/Files/*
+Server/userConfig.json
