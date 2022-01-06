@@ -1,4 +1,4 @@
-﻿@page "/Tasks"
+﻿@page "/Logs"
 @using LightManager.Shared
 @using LightManager.Shared.Models
 @using System.Web
@@ -22,9 +22,9 @@ RD API key
 
 *@
 
-<PageTitle>Tasks</PageTitle>
+<PageTitle>Logs</PageTitle>
 
-<h1>Tasks</h1>
+<h1>Logs</h1>
 @* <EditForm class="container" Model="settings">
         <DataAnnotationsValidator />
         <ValidationSummary />
@@ -51,71 +51,32 @@ RD API key
     *@
 
 
-@if (tasks is null & torrentInfo is null)
+@if (logs is null)
 {
 	<p><em>Loading...</em></p>
 }
-else if (torrentInfo is null || tasks is not null)
+else if (logs is not null)
 {
 	<table class="col-md-12 table-bordered table-striped table-condensed cf">
 		<tr>
-			<th>#</th>
 			<th>Description</th>
 			<th>Filename</th>
             <th>LastModified</th>
+            <th>Downloaded</th>
             <th>MagnetLink</th>
 		</tr>
 
-		@foreach (var item in tasks)
+		@foreach (var item in logs)
 		{
 			<tr>
-				<td><input type="checkbox" @bind-value=item.Downloaded/></td>
 				<td>@item.Description</td>
 				<td>@item.Filename</td>
                 <td>@item.LastModified</td>
+                <td>@item.Downloaded</td>
                 <td>@(string.Concat(@item.MagnetLink.Take(20)))</td>
 			</tr>
 		}
-
-
-
 </table>
-<input type="submit" value="Submit" @onclick=AddSelectedTorrents/>
-}
-
-@if (torrentInfo is not null)
-{
-	<table class="col-md-12 table-bordered table-striped table-condensed cf">
-		<tr>
-			<th></th>
-			<th>ID</th>
-			<th>Filename</th>
-            <th>Progress</th>
-		</tr>
-
-		@foreach (var item in torrentInfo)
-		{
-			<tr>
-                <td></td>
-				<td>@item.id</td>
-				<td>@item.filename</td>
-                <td>@item.progress</td>
-            </tr>
-            foreach(var file in @item.files)
-            {
-            <tr>
-				<td><input type="checkbox" @bind-value=file.selected/></td>
-				<td>@file.id</td>
-				<td>@file.path</td>
-                <td></td>
-            </tr>
-            }
-        }
-
-
-
-</table>
-<input type="submit" value="Submit" @onclick=SelectFiles/>
 }
 
 
@@ -125,10 +86,10 @@ else if (torrentInfo is null || tasks is not null)
     //private string[] logCount = new String[3] { "test", "test2", "test32" };
     //private LogObject logBject;
     //private WeatherForecast[]? forecasts;
-    private AppSettings? settings = new AppSettings();
+    //private AppSettings? settings = new AppSettings();
     //private FolderObject? folderObject = new FolderObject();
-    private List<TaskItem> tasks = new List<TaskItem>();
-    private  List<RDTorrentInfo> torrentInfo = null;
+    private List<TaskItem> logs = new List<TaskItem>();
+    //private  List<RDTorrentInfo> torrentInfo = null;
     //private string Path { get; set; } = "/";
 
     protected override async Task OnInitializedAsync()
@@ -138,35 +99,17 @@ else if (torrentInfo is null || tasks is not null)
         //Console.WriteLine(folderObject);
         //await Task.Delay(000);
         //forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("WeatherForecast"); 
-        await TaskProcessor();
+        await LogProcessor();
     }
-    private async Task TaskProcessor()
+    private async Task LogProcessor()
     {
-        tasks = await Http.GetFromJsonAsync<List<TaskItem>>($"api/Tasks/GetTasks");
+        logs = await Http.GetFromJsonAsync<List<TaskItem>>($"api/Logs/GetLogs");
         StateHasChanged();
         //Console.WriteLine(tasks);
     }
 
-    private async Task AddSelectedTorrents()
-    {
-        var downloadTasks = tasks.Where(x => x.Downloaded == true).ToList();
-        HttpResponseMessage responseMessage = await Http.PostAsJsonAsync<List<TaskItem>>("api/Tasks/AddSelected",downloadTasks);
-        Console.WriteLine(await responseMessage.Content.ReadAsStringAsync());
-        //torrentInfo = await responseMessage.Content.ReadFromJsonAsync<List<RDTorrentInfo>>();
-        await TaskProcessor();
 
-        
-    }
 
-    private async Task SelectFiles()
-    {
-        HttpResponseMessage responseMessage = await Http.PostAsJsonAsync<List<RDTorrentInfo>>("api/Tasks/SelectFiles",torrentInfo);
-        tasks = await Http.GetFromJsonAsync<List<TaskItem>>($"api/Tasks/GetTasks");
-        Console.WriteLine(await responseMessage.Content.ReadAsStringAsync());
-        StateHasChanged();
-        //torrentInfo = await responseMessage.Content.ReadFromJsonAsync<List<RDTorrentInfo>>();
-           // = await files.Content.ReadFromJsonAsync<RDTorrentInfo>();
-    }
 
 
 

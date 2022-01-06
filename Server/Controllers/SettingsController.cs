@@ -18,9 +18,9 @@ namespace LightManager.Server.Controllers
         //};
 
         private readonly ILogger<TasksController> _logger;
-        private readonly IAppSettingsService _appsettings;
+        private readonly ISettingsService _appsettings;
 
-        public SettingsController(ILogger<TasksController> logger, IAppSettingsService appSettings)
+        public SettingsController(ILogger<TasksController> logger, ISettingsService appSettings)
         {
             _logger = logger;
             _appsettings = appSettings;
@@ -71,7 +71,8 @@ namespace LightManager.Server.Controllers
                 };
                 return new FolderObject()
                 {
-                    Parent = parentObject.Path,
+                    ParentPath = parentObject.Path,
+                    CurrentPath = currentFolder.FullName,
                     DirectoryObjects = folders.Select(f => new DirectoryObject()
                     {
                         Name = f.Name,
@@ -84,7 +85,7 @@ namespace LightManager.Server.Controllers
 
             return new FolderObject()
             {
-                Parent = "Failed to get folder info"
+                ParentPath = "Failed to get folder info"
             };
         }
 

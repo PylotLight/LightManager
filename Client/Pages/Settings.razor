@@ -2,6 +2,7 @@
 @using LightManager.Shared
 @using LightManager.Shared.Models
 @using System.Web
+@using LightManager.Client.Components
 @inject HttpClient Http
 @*
 	TODO//
@@ -25,158 +26,178 @@
 <PageTitle>Settings</PageTitle>
 
 <h1>Settings</h1>
-<EditForm class="container" Model="settings">
-	<DataAnnotationsValidator />
-	<ValidationSummary />
 
-	<div class="form-group">
-		<label for="title">Select Torrent Import Folder</label>
-		<InputText placeholder="/" @bind-Value="settings.ImportPath" aria-autocomplete="list" class="form-control" />
-	</div>
-
-	<div class="row">
-		<div class="col">
-			<button type="button" @onclick="FolderSave" class="btn btn-success">Save</button>
-		</div>
-@*		<div class="col">
-			<button type="button" @onclick="FolderPicker("")" class="btn btn-danger float-right">Submit</button>
-		</div>*@
-	</div>
-
-</EditForm>
-
-@if (folderObject == null)
+@if (settings == null)
 {
 	<p><em>Loading...</em></p>
 }
 else
 {
-@*	<select>
-		@foreach (var value in folderObject.DirectoryObjects)
+	<EditForm class="container" Model="settings">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+
+		<div class="form-group">
+			<label for="title" class="form-label">Select Torrent Import Folder</label>
+			<InputText placeholder="/" @bind-Value="settings.ImportPath" aria-autocomplete="list" class="form-control" /><button type="button" @onclick="() => FolderDialogOpen(FolderSelection.Import)"><span class="oi oi-folder" data-glyph="folder"></span></button>
+		</div>
+
+		<div class="form-group">
+			<label for="title" class="form-label">Select Torrent Import Folder</label>
+			<InputText placeholder="/" @bind-Value="settings.ExportPath" aria-autocomplete="list" class="form-control" /><button type="button" @onclick="() => FolderDialogOpen(FolderSelection.Export)"><span class="oi oi-folder" data-glyph="folder"></span></button>
+		</div>
+
+		@if (FolderDialogIsOpen)
 		{
-			<option value=@value.Name>@value.Name</option>
+			<FolderBrowser Title="@($"{folderSelection} Directory Selection")"
+				   Text=@folderObject.CurrentPath
+				   OnClose="@FolderDialogClose">
+				@if (folderObject.DirectoryObjects != null)
+				{
+					<div class="results" style="max-height: 350px; overflow-y: auto;">
+						@foreach (var item in folderObject.DirectoryObjects)
+						{
+							<div class="listItem listItem-border" @onclick="@(() => FolderSelect(@item.Path, folderSelection))">
+								<div class=listItemBody style="padding-left: 0;padding-top: .5em;padding-bottom: .5em;">
+									<div class=listItemBodyText>
+										@item.Name
+									</div>
+								</div>
+							</div>
+						}
+					</div>
+				}
+			</FolderBrowser>
 		}
-	</select>*@
-	<table class="col-md-12 table-bordered table-striped table-condensed cf">
-		<tr>
-			<th>#</th>
-			<th>Folder</th>
-		</tr>
-		@if (folderObject.DirectoryObjects != null)
-		{
-			@foreach (var item in folderObject.DirectoryObjects)
-			{
-				<tr @onclick="@(() => ImportSelection(@item.Path))">
-
-					<td><input type="checkbox" /></td>
-					<td>@item.Name</td>
-
-				</tr>
-			}}
-	</table>
+	</EditForm>
 }
-@*<input type="file" onchange="selectFolder(event);" webkitdirectory mozdirectory msdirectory odirectory directory multiple="multiple" />*@
 
-<EditForm class="container" Model="settings">
+@*
+	@if (Exportfolder == null)
+	{
+	<p><em>Loading...</em></p>
+	}
+	else
+	{
+	<EditForm class="container" Model="settings">
 	<DataAnnotationsValidator />
 	<ValidationSummary />
 
 	<div class="form-group">
-		<label for="title">Select Torrent Export Folder</label>
-		<InputText placeholder="/" @bind-Value="settings.ExportPath" aria-autocomplete="list" class="form-control" />
+	<label for="title" class="form-label">Select Torrent Export Folder</label>
+	<InputText placeholder="/" @bind-Value="settings.ExportPath" aria-autocomplete="list" class="form-control" /><button type="button" @onclick="() => OpenFolderDialog()"><span class="oi oi-folder" data-glyph="folder"></span></button>
 	</div>
 
-	<div class="row">
-		<div class="col">
-			<button type="button" @onclick="FolderSave" class="btn btn-success">Save</button>
-		</div>
-@*		<div class="col">
-			<button type="button" @onclick="FolderPicker" class="btn btn-danger float-right">Submit</button>
-		</div>*@
+	@if (FolderDialogOpen)
+	{
+	<FolderBrowser Title="File Download Directory Selection"
+	Text=@Exportfolder.CurrentPath
+	OnClose="@OnFolderDialogClose">
+	@if (Exportfolder.DirectoryObjects != null)
+	{
+	<div class="results" style="max-height: 350px; overflow-y: auto;">
+	@foreach (var item in Exportfolder.DirectoryObjects)
+	{
+	<div class="listItem listItem-border" @onclick="@(() => ExportSelection(@item.Path))">
+	<div class=listItemBody style="padding-left: 0;padding-top: .5em;padding-bottom: .5em;">
+	<div class=listItemBodyText>
+	@item.Name
 	</div>
-
-</EditForm>
-
-@if (folderObject == null)
-{
-	<p><em>Loading...</em></p>
-}
-else
-{
-@*	<select>
-		@foreach (var value in folderObject.DirectoryObjects)
-		{
-			<option value=@value.Name>@value.Name</option>
-		}
-	</select>*@
-	<table class="col-md-12 table-bordered table-striped table-condensed cf">
-		<tr>
-			<th>#</th>
-			<th>Folder</th>
-		</tr>
-		@if (folderObject.DirectoryObjects != null)
-		{
-			@foreach (var item in folderObject.DirectoryObjects)
-			{
-				<tr @onclick="@(() => ExportSelection(@item.Path))">
-
-					<td><input type="checkbox" /></td>
-					<td>@item.Name</td>
-
-				</tr>
-			}}
-	</table>
-}
+	</div>
+	</div>
+	}
+	</div>
+	}
+	</FolderBrowser>
+	}
+	</EditForm>
+	}*@
 
 @code {
-	//private string[] logCount = new String[3] { "test", "test2", "test32" };
-	//private LogObject logBject;
-	//private WeatherForecast[]? forecasts;
 	private AppSettings? settings = new AppSettings();
 	private FolderObject? folderObject = new FolderObject();
-	//private string Path { get; set; } = "/";
+	//private FolderObject? Exportfolder = new FolderObject();
+	public bool FolderDialogIsOpen { get; set; }
+	public enum FolderSelection { Import, Export, }
+	private FolderSelection folderSelection { get; set; }
+
+	//private readonly HttpClient Http;
+
+
 
 	protected override async Task OnInitializedAsync()
 	{
 		settings = await Http.GetFromJsonAsync<AppSettings>("api/Settings/ReadSettings");
 		//Get saved folder first or if empty load root
-		if(settings.ImportPath is null){
-			settings.ImportPath = "/";
-			FolderSave();
-		}
-		if(settings.ExportPath is null){
-			settings.ExportPath = "/";
-			FolderSave();
-		}
-		StateHasChanged();
-		FolderPicker("./");
-		
-	}
-	
-	private async Task ExportSelection(string path)
-	{
-		settings.ExportPath = path;
+		//if (settings.ImportPath is null)
+		//{
+		//	settings.ImportPath = "/";
+		//	FolderSave();
+		//}
+		//if (settings.ExportPath is null)
+		//{
+		//	settings.ExportPath = "/";
+		//	FolderSave();
+		//}
+		//FolderPicker();
+		//StateHasChanged();
 
-		FolderPicker(settings.ExportPath);
+
 	}
 
-	private async Task ImportSelection(string path)
+	private async Task FolderSelect(string path, FolderSelection folder)
 	{
-		settings.ImportPath = path;
-
-		FolderPicker(settings.ImportPath);
+		if (folder == FolderSelection.Import) settings.ImportPath = path;
+		if (folder == FolderSelection.Export) settings.ExportPath = path;
+		if (folder == FolderSelection.Export) FolderPicker(FolderSelection.Export); else FolderPicker(FolderSelection.Import);
 	}
 
-	private async Task FolderPicker(string path)
+	//private async Task ImportSelection(string path)
+	//{
+	//	settings.ImportPath = path;
+
+	//	FolderPicker(FolderSelection.Import);
+	//}
+
+	private async void FolderPicker(FolderSelection selection)
 	{
+		string? path = selection == FolderSelection.Import ? settings?.ImportPath : settings?.ExportPath;
 		folderObject = await Http.GetFromJsonAsync<FolderObject>($"api/Settings/GetFolder?Path={HttpUtility.UrlEncode(path)}");
-		Console.WriteLine(folderObject);
+		//Exportfolder = await Http.GetFromJsonAsync<FolderObject>($"api/Settings/GetFolder?Path={HttpUtility.UrlEncode(settings.ExportPath)}");
+		//Console.WriteLine(folderObject);
 		StateHasChanged();
 	}
 
-	private async Task FolderSave()
+	private async void FolderSave()
 	{
-		await Http.PostAsJsonAsync<AppSettings>("api/Settings/SaveSettings",settings);
+
+		await Http.PostAsJsonAsync<AppSettings>("api/Settings/SaveSettings", settings);
+		//if (selection == FolderSelection.Import)
+		//FolderPicker(FolderSelection.Import);
+		//if (selection != FolderSelection.Import)
+		//FolderPicker(FolderSelection.Export);
 	}
+
+	private void FolderDialogOpen(FolderSelection selection)
+	{
+		folderSelection = selection;
+		if (selection == FolderSelection.Export) FolderPicker(FolderSelection.Export); else FolderPicker(FolderSelection.Import);
+		FolderDialogIsOpen = true;
+		StateHasChanged();
+	}
+
+	private async Task FolderDialogClose(bool accepted)
+	{
+		if (accepted)
+		{
+			FolderSave();
+		}
+
+		FolderDialogIsOpen = false;
+		folderObject = new FolderObject();
+		StateHasChanged();
+	}
+
+
 
 }

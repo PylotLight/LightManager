@@ -2,7 +2,8 @@
 {
     public class FolderObject
     {
-        public string? Parent { get; set; }
+        public string? ParentPath { get; set; }
+        public string? CurrentPath { get; set; }
         public IEnumerable<DirectoryObject>? DirectoryObjects { get; set; }
     }
 

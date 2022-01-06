@@ -3,10 +3,8 @@ using System.Text.Json;
 
 namespace LightManager.Server.Services
 {
-    public interface IAppSettingsService
+    public interface ISettingsService
     {
-        //string ImportPath { get; }
-
         AppSettings ReadSettings();
         
         void WriteSettings(AppSettings appSettings);

@@ -1,5 +1,6 @@
 using BencodeNET.Parsing;
 using BencodeNET.Torrents;
+using LightManager.Server.Context;
 using LightManager.Server.Services;
 using LightManager.Shared;
 using LightManager.Shared.Models;
@@ -27,18 +28,20 @@ namespace LightManager.Server.Controllers
 
         private readonly HttpClient _httpClient;
         private readonly ILogger<TasksController> _logger;
-        private readonly IAppSettingsService _appSettings;
+        private readonly ISettingsService _appSettings;
+        private readonly TaskDBContext _context;
 
-        public TasksController(ILogger<TasksController> logger, IAppSettingsService appSettings)
+        public TasksController(ILogger<TasksController> logger, ISettingsService appSettings, TaskDBContext context)
         {
             _httpClient = new HttpClient();
             _logger = logger;
             _appSettings = appSettings;
+            _context = context;
         }
 
 
         [HttpGet]
-        public async Task<List<DLTask>> GetTasks()
+        public async Task<List<TaskItem>> GetTasks()
         {
             return await GetTasksInternal();
         }
@@ -49,48 +52,43 @@ namespace LightManager.Server.Controllers
             return await SelectFilesInternal(torrentInfo);
         }
 
-
-
-
         [HttpPost]
-        public async Task<List<RDTorrentInfo>> AddSelected(List<DLTask> tasks)
+        public async Task<List<RDTorrentInfo>> AddSelected(List<TaskItem> tasks)
         {
             return await AddSelectedInternal(tasks);
         }
 
-        private async Task<List<RDTorrentInfo>> AddSelectedInternal(List<DLTask> tasks)
+        private async Task<List<RDTorrentInfo>> AddSelectedInternal(List<TaskItem> tasks)
         {
             //Add selected items to DL list then return item select UI in modal when interactive? (sonnar interactive vs quick add)
             try
             {
                 List<RDTorrentInfo> infos = new List<RDTorrentInfo>();
+                _logger.LogInformation($"Loading {tasks.Count} tasks");
                 foreach (var task in tasks)
                 {
-                    if (task.Download is false) { continue; }
+                    if (task.Downloaded is false) { continue; }
                     //submit to RD and get response, save info to db/log/service? local file for now.. should be db though ;p
-
-                    RDAddTorrent data = await AddSelectedTorrent(task);
+                    
+                    RDAddTorrent SelectedTorrentResponse = await AddSelectedTorrent(task);
+                    _logger.LogInformation($"Added Torrent to RD");
                     //Get file Ids and select them for next func?
                     //infos.Add(await HandleSelectedTorrent(data));
-                    RDTorrentInfo torrentReturnData = await HandleSelectedTorrent(data);
-                    if (torrentReturnData.status == "downloaded")
+                    RDTorrentInfo torrentReturnData = await HandleSelectedTorrent(SelectedTorrentResponse);
+                    _logger.LogInformation($"Sucessfully selected {torrentReturnData.files.Count} Files with torrent status of {torrentReturnData.status}");
+                    //while torrent is not ready, look until it is.
+                    while (torrentReturnData.status != "downloaded")
                     {
-                        //start downloading to server, need dl location and move location
-                        await DownloadFiles(torrentReturnData);
-                        //var file = await RDApi(new APIObject() {data= torrentReturnData.links });
-                        //Console.WriteLine(torrentReturnData);
-                        //unrestrict and dl
-
+                        _logger.LogInformation($"{torrentReturnData.filename} is not ready yet, trying again in 60 seconds");
+                        await Task.Delay(TimeSpan.FromSeconds(60));
+                        var UpdatedInfoResponse = await RDApi(new APIObject() { id = torrentReturnData.id, Method = API.Info });
+                        torrentReturnData = await UpdatedInfoResponse.Content.ReadFromJsonAsync<RDTorrentInfo>();
+                        _logger.LogInformation($"Torrent Progress: {torrentReturnData.progress}");
                     }
-                    //await WaitForTorrent();
-                    //add to torrents to check on later?
-                    //Get the unrestricted links
-                    //Check if ready for download
-                    //Spawn thread to check for downloads that arents ready
-                    //otherwise grab and download
-                    //move file to selected location with proper torrent filename
-                    //delete/move torrent file, or grab mag link and store in db and del torrent file?
-                    //log downloaded and moved files.
+                    //start downloading to server, need dl location and move location
+                    var links = await GetDownloadLinks(torrentReturnData);
+                    //await DownloadFiles(links);
+                    await ArchiveTaskRecord(task); //delete/remove torrent/mag file and submit to db after finished downloading.
 
                 }
 
@@ -101,20 +99,31 @@ namespace LightManager.Server.Controllers
             {
                 _logger.LogError(ex.Message);
                 //return null;
-                throw new Exception("Add selected has failed");
+                throw new Exception("Download has failed");
             }
 
 
         }
+
+        private async Task ArchiveTaskRecord(TaskItem task)
+        {
+            _logger.LogInformation($"Saving {task.Filename} to DB");
+            await _context.AddAsync(task);
+            await _context.SaveChangesAsync();
+            string TorrentPath = Path.Combine(_appSettings.ReadSettings().ImportPath, task.Filename);
+            _logger.LogInformation($"Deleting {task.Filename}");
+            System.IO.File.Delete(TorrentPath);
+        }
+
         //Add Torrent file and return for file selection
-        private async Task<RDAddTorrent> AddSelectedTorrent(DLTask task)
+        private async Task<RDAddTorrent> AddSelectedTorrent(TaskItem task)
         {
             //submit torrent data to api and return an RD object
             APIObject apiData = new APIObject() { data = task.MagnetLink, Method = API.AddMagnet };
             var AddTorrentResponse = await RDApi(apiData);
             RDAddTorrent AddedContent = await AddTorrentResponse.Content.ReadFromJsonAsync<RDAddTorrent>();
             AddTorrentResponse.EnsureSuccessStatusCode();
-            _logger.LogInformation($"{task.Description} was added to RD");
+            _logger.LogInformation($"{task.Filename} was added to RD");
 
             return AddedContent;
         }
@@ -129,6 +138,7 @@ namespace LightManager.Server.Controllers
             var fileList = torrentFileInfo.files.Where(x => x.path.Contains(".mkv")).Select(x => x.id).ToArray();
             if (fileList.Length != 0)
             {
+                _logger.LogInformation($"Selecting {fileList.Length} .mkv Files");
                 //submit file selection
                 var result = await RDApi(new APIObject() { id = torrentFileInfo.id, data = string.Join(',', fileList), Method = API.SelectFiles });
                 //get update of torrent after selecting files, need to grab links if available or wait if unavailable.
@@ -144,7 +154,7 @@ namespace LightManager.Server.Controllers
                 //else loop and check api until its ready and return that.
 
             }
-
+            
             //Grab file info and if multifile do something to select file IDs and cont or return to select them.
             //Now need a whole new table/UI for displaying possible multiple files.
 
@@ -158,47 +168,54 @@ namespace LightManager.Server.Controllers
             return torrentFileInfo;
         }
 
-        private async Task DownloadFiles(RDTorrentInfo torrentInfo)
+        private async Task<List<RDUnrestrictedJson>> GetDownloadLinks(RDTorrentInfo torrentInfo)
         {
             //fix with an injected service?
-
+            List<RDUnrestrictedJson> Links = new List<RDUnrestrictedJson >();
             foreach (var link in torrentInfo.links)
             {
                 var responseMessage = await RDApi(new APIObject() { data = HttpUtility.UrlEncode(link), Method = API.UnrestrictLink });
                 RDUnrestrictedJson RDUnrestrictedLinks = await responseMessage.Content.ReadFromJsonAsync<RDUnrestrictedJson>();
                 if (!string.IsNullOrEmpty(RDUnrestrictedLinks.download))
                 {
+                    Links.Add(RDUnrestrictedLinks);
                     //get new DL links
-                    using var request = new HttpRequestMessage(new HttpMethod("GET"), RDUnrestrictedLinks.download);
-                    HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-                    //Confirm OK
-                    response.EnsureSuccessStatusCode();
-                    //Update
-                    //AppSettings settings = _appSettings.ReadSettings();
-
-                    //Create filestream
-                    string fileDLPath = _appSettings.ReadSettings().ExportPath + RDUnrestrictedLinks.filename;
-                    using FileStream fileStream = new FileStream(RDUnrestrictedLinks.filename, FileMode.Create, FileAccess.Write, FileShare.None);
-
-                    await response.Content.CopyToAsync(fileStream);
-                    System.IO.File.Move(RDUnrestrictedLinks.filename, $"{_appSettings.ReadSettings().ExportPath}/{RDUnrestrictedLinks.filename}"); //archive torrent/magnet file?
-                    //System.IO.File.Move(RDUnrestrictedLinks.filename, $"/volume1/Media/Downloads/{RDUnrestrictedLinks.filename}"); //move the download itself or just download to this location to start with.
-                    _logger.LogInformation("Downloaded: " + RDUnrestrictedLinks.filename);
-
                 }
+            }
+            return Links;
+        }
+
+        private async Task DownloadFiles(List<RDUnrestrictedJson> unrestrictedLinks)
+        {
+            string exportpath = _appSettings.ReadSettings().ExportPath;
+            foreach (var unrestrictedLink in unrestrictedLinks)
+            {
+                using var request = new HttpRequestMessage(new HttpMethod("GET"), unrestrictedLink.download);
+                HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                //Confirm OK
+                response.EnsureSuccessStatusCode();
+                //Create filestream
+                string fileDLPath = Path.Combine(exportpath, unrestrictedLink.filename);
+                using FileStream fileStream = new FileStream(fileDLPath, FileMode.Create, FileAccess.Write, FileShare.None,4096,true);
+
+                await response.Content.CopyToAsync(fileStream);
+                //System.IO.File.Move(unrestrictedLink.filename, fileDLPath); 
+                //archive torrent/magnet file?                                                                                         
+                //System.IO.File.Move(RDUnrestrictedLinks.filename, $"/volume1/Media/Downloads/{RDUnrestrictedLinks.filename}"); //move the download itself or just download to this location to start with.
+                _logger.LogInformation("Downloaded: " + unrestrictedLink.filename);
             }
         }
 
-        private async Task<List<DLTask>> GetTasksInternal()
+        private async Task<List<TaskItem>> GetTasksInternal()
         {
             //var settingsController = new SettingsController();
             //var currentsettings = await _appSettings.ReadSettings();
-            List<DLTask> tasks = new List<DLTask>();
+            List<TaskItem> tasks = new List<TaskItem>();
             var files = new DirectoryInfo(_appSettings.ReadSettings().ImportPath).GetFiles();
             //var files2 = files (currentsettings.ImportPath);
             foreach (var file in files)
             {
-                tasks.Add(new DLTask()
+                tasks.Add(new TaskItem()
                 {
                     Filename = file.Name,
                     LastModified = file.LastWriteTime,
@@ -213,7 +230,7 @@ namespace LightManager.Server.Controllers
         {
             //var settingsController = new SettingsController();
             //var currentsettings = await settingsController.ReadSettings();
-            //List<DLTask> tasks = new List<DLTask>();
+            //List<TaskItem> tasks = new List<TaskItem>();
             //var files = new DirectoryInfo(currentsettings.ImportPath).GetFiles();
             //var files2 = files (currentsettings.ImportPath);
             foreach (var file in torrentInfo)
@@ -261,6 +278,7 @@ namespace LightManager.Server.Controllers
 
         private async Task<HttpResponseMessage> RDApi(APIObject apiData)
         {
+            _logger.LogInformation($"API Request: {apiData.Method}");
             string method;
             if (string.IsNullOrEmpty(apiData.data)) { method = "GET"; }
             else { method = "POST"; }
@@ -286,9 +304,9 @@ namespace LightManager.Server.Controllers
                 string MediaTypeHeader = "application/x-bittorrent";
                 request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(MediaTypeHeader);
             }
-
+            _logger.LogInformation($"{apiData.Method} API Request to: {requestURL}");
             HttpResponseMessage response = await _httpClient.SendAsync(request);
-
+            //var t = response.Content.ReadAsStringAsync();
             return response;
         }
 

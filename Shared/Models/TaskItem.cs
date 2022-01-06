@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace LightManager.Shared.Models
 {
-    public class DLTask
+    public class TaskItem
     {
-        public bool Download { get; set; }
+        public int Id { get; set; }
+        public bool Downloaded { get; set; }
         public string? Filename { get; set; }
         public string? Description { get; set; }
         public DateTime LastModified { get; set; }
