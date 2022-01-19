@@ -368,3 +368,5 @@ Server/Files/*
 Server/userConfig.json
 Server/LManager.db
 Server/Migrations/*
+Server/LManager.db-shm
+Server/LManager.db-wal

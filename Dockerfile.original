@@ -1,0 +1,54 @@
+#FROM alpine:latest AS base
+#FROM mcr.microsoft.com/dotnet/aspnet:6.0.1-focal
+#WORKDIR /app
+#EXPOSE 80
+
+#ENV ASPNETCORE_URLS=http://+5000
+#ENV DOTNET_GENERATE_ASPNET_CERTIFICATE=false
+# Creates a non-root user with an explicit UID and adds permission to access the /app folder
+# For more info, please refer to https://aka.ms/vscode-docker-dotnet-configure-containers
+#RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
+#USER appuser
+
+#FROM mcr.microsoft.com/dotnet/sdk:6.0-focal AS build
+#WORKDIR /src
+#COPY ["Server/LightManager.Server.csproj", "Server/"]
+#RUN dotnet restore "Server/LightManager.Server.csproj"
+#COPY . .
+#WORKDIR "/src/Server"
+#RUN dotnet build "LightManager.Server.csproj" -c Release -o /app/build
+
+#FROM build AS publish
+#RUN dotnet publish "LightManager.Server.csproj" -c Release -o /app/publish
+
+#FROM base AS final
+#WORKDIR /app
+#COPY ./Server/bin/Release/net6.0/publish .
+#RUN chmod 777 "./LightManager.Server"
+#ENTRYPOINT ["./LightManager.Server"]
+#docker build -t lightmanager:linux-demo -f Server/Dockerfile .
+
+
+
+# https://hub.docker.com/_/microsoft-dotnet-core
+FROM mcr.microsoft.com/dotnet/sdk:6.0.101-alpine3.14 AS build
+WORKDIR /source
+
+# copy csproj and restore as distinct layers
+COPY *.sln .
+COPY LightManager/Server/*.csproj ./app/
+WORKDIR app
+#RUN dotnet restore -r linux-musl-x64
+
+# copy everything else and build app
+#COPY LightManager/. ./app/
+#WORKDIR /source/app
+#RUN dotnet publish -c release -o /app -r linux-musl-x64 --self-contained true --no-restore /p:PublishTrimmed=true /p:PublishReadyToRun=true /p:PublishSingleFile=true
+
+# final stage/image
+#FROM mcr.microsoft.com/dotnet/runtime-deps:6.0.1-alpine3.14
+#WORKDIR /app
+#COPY --from=build /app ./
+
+#ENTRYPOINT ["./LightManger.Server"]
+#Build the ASP.NET Core App Docker image

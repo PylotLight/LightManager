@@ -1,12 +1,10 @@
 using BencodeNET.Parsing;
 using BencodeNET.Torrents;
 using LightManager.Server.Context;
-using LightManager.Server.Services;
-using LightManager.Shared;
 using LightManager.Shared.Models;
+using LightManager.Shared.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Headers;
-using System.Text.Json;
 using System.Web;
 
 namespace LightManager.Server.Controllers
@@ -72,11 +70,10 @@ namespace LightManager.Server.Controllers
                     
                     RDAddTorrent SelectedTorrentResponse = await AddSelectedTorrent(task);
                     _logger.LogInformation($"Added Torrent to RD");
-                    //Get file Ids and select them for next func?
-                    //infos.Add(await HandleSelectedTorrent(data));
+
                     RDTorrentInfo torrentReturnData = await HandleSelectedTorrent(SelectedTorrentResponse);
                     _logger.LogInformation($"Sucessfully selected {torrentReturnData.files.Count} Files with torrent status of {torrentReturnData.status}");
-                    //while torrent is not ready, look until it is.
+
                     while (torrentReturnData.status != "downloaded")
                     {
                         _logger.LogInformation($"{torrentReturnData.filename} is not ready yet, trying again in 60 seconds");
@@ -85,14 +82,14 @@ namespace LightManager.Server.Controllers
                         torrentReturnData = await UpdatedInfoResponse.Content.ReadFromJsonAsync<RDTorrentInfo>();
                         _logger.LogInformation($"Torrent Progress: {torrentReturnData.progress}");
                     }
-                    //start downloading to server, need dl location and move location
+
                     var links = await GetDownloadLinks(torrentReturnData);
-                    //await DownloadFiles(links);
+                    await DownloadFiles(links);
                     await ArchiveTaskRecord(task); //delete/remove torrent/mag file and submit to db after finished downloading.
 
                 }
 
-                _logger.LogInformation("All selected files have been added, file selection required.");
+                _logger.LogInformation("All selected files have been added.");
                 return infos;
             }
             catch (Exception ex)
@@ -110,7 +107,7 @@ namespace LightManager.Server.Controllers
             _logger.LogInformation($"Saving {task.Filename} to DB");
             await _context.AddAsync(task);
             await _context.SaveChangesAsync();
-            string TorrentPath = Path.Combine(_appSettings.ReadSettings().ImportPath, task.Filename);
+            string TorrentPath = Path.Combine((await _appSettings.ReadSettingsAsync()).ImportPath, task.Filename);
             _logger.LogInformation($"Deleting {task.Filename}");
             System.IO.File.Delete(TorrentPath);
         }
@@ -134,11 +131,12 @@ namespace LightManager.Server.Controllers
             var files = await RDApi(new APIObject() { id = addTorrent.id, Method = API.Info });
             //var t = await files.Content.ReadAsStringAsync();
             RDTorrentInfo torrentFileInfo = await files.Content.ReadFromJsonAsync<RDTorrentInfo>();
-
-            var fileList = torrentFileInfo.files.Where(x => x.path.Contains(".mkv")).Select(x => x.id).ToArray();
+            var formats = (await _appSettings.ReadSettingsAsync()).SupportedFormats;
+            var fileList = torrentFileInfo.files.Where(x => formats.Contains(x.path.Split('.').Last())).Select(x => x.id).ToArray();
+            //var fileList2 = torrentFileInfo.files.Where(x => x.path.Contains(".mkv")).Select(x => x.id).ToArray();
             if (fileList.Length != 0)
             {
-                _logger.LogInformation($"Selecting {fileList.Length} .mkv Files");
+                _logger.LogInformation($"Selecting {fileList.Length} {string.Join(',', formats)} Files");
                 //submit file selection
                 var result = await RDApi(new APIObject() { id = torrentFileInfo.id, data = string.Join(',', fileList), Method = API.SelectFiles });
                 //get update of torrent after selecting files, need to grab links if available or wait if unavailable.
@@ -187,7 +185,7 @@ namespace LightManager.Server.Controllers
 
         private async Task DownloadFiles(List<RDUnrestrictedJson> unrestrictedLinks)
         {
-            string exportpath = _appSettings.ReadSettings().ExportPath;
+            string exportpath = (await _appSettings.ReadSettingsAsync()).ExportPath;
             foreach (var unrestrictedLink in unrestrictedLinks)
             {
                 using var request = new HttpRequestMessage(new HttpMethod("GET"), unrestrictedLink.download);
@@ -211,7 +209,7 @@ namespace LightManager.Server.Controllers
             //var settingsController = new SettingsController();
             //var currentsettings = await _appSettings.ReadSettings();
             List<TaskItem> tasks = new List<TaskItem>();
-            var files = new DirectoryInfo(_appSettings.ReadSettings().ImportPath).GetFiles();
+            var files = new DirectoryInfo((await _appSettings.ReadSettingsAsync()).ImportPath).GetFiles();
             //var files2 = files (currentsettings.ImportPath);
             foreach (var file in files)
             {

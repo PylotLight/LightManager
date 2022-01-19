@@ -3,24 +3,25 @@
 @using LightManager.Shared.Models
 @using System.Web
 @using LightManager.Client.Components
-@inject HttpClient Http
+@using LightManager.Shared.Services
+@inject ISettingsService SettingsService
+
+
 @*
 	TODO//
-	Get matching .torrent and magnet files and list them and download details ready to approve for upload/download
-	Collect errors ready for displaying on logs page
-	have download progress page with links to any errors.
 
+	Collect errors ready for displaying on logs page
+	have download progress page with links to any errors.	
+	ability to select episodes/files from each file.
+
+	Done//
+	Get matching .torrent and magnet files and list them and download details ready to approve for upload/download
 	get torrent and magnet files to vol1 from *arr
 	set location in app to where files are stored so it can read them.
 	process the files.
-	ability to select episodes/files from each file.
-
-
 	properties to define - folder location
 	where to move torrent files
 	RD API key
-
-
 *@
 
 <PageTitle>Settings</PageTitle>
@@ -43,9 +44,19 @@ else
 		</div>
 
 		<div class="form-group">
-			<label for="title" class="form-label">Select Torrent Import Folder</label>
+			<label for="title" class="form-label">Select Torrent Export Folder</label>
 			<InputText placeholder="/" @bind-Value="settings.ExportPath" aria-autocomplete="list" class="form-control" /><button type="button" @onclick="() => FolderDialogOpen(FolderSelection.Export)"><span class="oi oi-folder" data-glyph="folder"></span></button>
 		</div>
+
+		<div class="form-group">
+			<label for="title" class="form-label">Export DB Data</label>
+			<button type="button" @onclick="() => ExportDB()"><span class="oi oi-data-transfer-download"></span></button>
+		</div>
+@*
+		<div class="form-group form-text">
+			<label for="title" class="form-label">RD API Key</label>
+			<InputText type="button" @bind-Value=settings.RDAPIKey/><span class="oi oi-folder" data-glyph="folder"></span>
+		</div>*@
 
 		@if (FolderDialogIsOpen)
 		{
@@ -70,79 +81,22 @@ else
 			</FolderBrowser>
 		}
 	</EditForm>
+
+
+
 }
-
-@*
-	@if (Exportfolder == null)
-	{
-	<p><em>Loading...</em></p>
-	}
-	else
-	{
-	<EditForm class="container" Model="settings">
-	<DataAnnotationsValidator />
-	<ValidationSummary />
-
-	<div class="form-group">
-	<label for="title" class="form-label">Select Torrent Export Folder</label>
-	<InputText placeholder="/" @bind-Value="settings.ExportPath" aria-autocomplete="list" class="form-control" /><button type="button" @onclick="() => OpenFolderDialog()"><span class="oi oi-folder" data-glyph="folder"></span></button>
-	</div>
-
-	@if (FolderDialogOpen)
-	{
-	<FolderBrowser Title="File Download Directory Selection"
-	Text=@Exportfolder.CurrentPath
-	OnClose="@OnFolderDialogClose">
-	@if (Exportfolder.DirectoryObjects != null)
-	{
-	<div class="results" style="max-height: 350px; overflow-y: auto;">
-	@foreach (var item in Exportfolder.DirectoryObjects)
-	{
-	<div class="listItem listItem-border" @onclick="@(() => ExportSelection(@item.Path))">
-	<div class=listItemBody style="padding-left: 0;padding-top: .5em;padding-bottom: .5em;">
-	<div class=listItemBodyText>
-	@item.Name
-	</div>
-	</div>
-	</div>
-	}
-	</div>
-	}
-	</FolderBrowser>
-	}
-	</EditForm>
-	}*@
 
 @code {
 	private AppSettings? settings = new AppSettings();
 	private FolderObject? folderObject = new FolderObject();
-	//private FolderObject? Exportfolder = new FolderObject();
 	public bool FolderDialogIsOpen { get; set; }
 	public enum FolderSelection { Import, Export, }
 	private FolderSelection folderSelection { get; set; }
 
-	//private readonly HttpClient Http;
-
-
 
 	protected override async Task OnInitializedAsync()
 	{
-		settings = await Http.GetFromJsonAsync<AppSettings>("api/Settings/ReadSettings");
-		//Get saved folder first or if empty load root
-		//if (settings.ImportPath is null)
-		//{
-		//	settings.ImportPath = "/";
-		//	FolderSave();
-		//}
-		//if (settings.ExportPath is null)
-		//{
-		//	settings.ExportPath = "/";
-		//	FolderSave();
-		//}
-		//FolderPicker();
-		//StateHasChanged();
-
-
+		settings = await SettingsService.ReadSettingsAsync();
 	}
 
 	private async Task FolderSelect(string path, FolderSelection folder)
@@ -152,30 +106,16 @@ else
 		if (folder == FolderSelection.Export) FolderPicker(FolderSelection.Export); else FolderPicker(FolderSelection.Import);
 	}
 
-	//private async Task ImportSelection(string path)
-	//{
-	//	settings.ImportPath = path;
-
-	//	FolderPicker(FolderSelection.Import);
-	//}
-
 	private async void FolderPicker(FolderSelection selection)
 	{
 		string? path = selection == FolderSelection.Import ? settings?.ImportPath : settings?.ExportPath;
-		folderObject = await Http.GetFromJsonAsync<FolderObject>($"api/Settings/GetFolder?Path={HttpUtility.UrlEncode(path)}");
-		//Exportfolder = await Http.GetFromJsonAsync<FolderObject>($"api/Settings/GetFolder?Path={HttpUtility.UrlEncode(settings.ExportPath)}");
-		//Console.WriteLine(folderObject);
+		folderObject = await SettingsService.ReadFolderObjectAsync(HttpUtility.UrlEncode(path));
 		StateHasChanged();
 	}
 
 	private async void FolderSave()
 	{
-
-		await Http.PostAsJsonAsync<AppSettings>("api/Settings/SaveSettings", settings);
-		//if (selection == FolderSelection.Import)
-		//FolderPicker(FolderSelection.Import);
-		//if (selection != FolderSelection.Import)
-		//FolderPicker(FolderSelection.Export);
+		await SettingsService.WriteSettingsAsync(settings);
 	}
 
 	private void FolderDialogOpen(FolderSelection selection)
@@ -198,6 +138,7 @@ else
 		StateHasChanged();
 	}
 
-
-
+	private async Task ExportDB(){
+		await SettingsService.ExportDBAsync();
+	}
 }

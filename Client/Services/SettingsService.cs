@@ -1,36 +1,51 @@
 ﻿using LightManager.Shared.Models;
-using System.Text.Json;
+using LightManager.Shared.Services;
+using Microsoft.JSInterop;
+using System.Net.Http.Json;
 
 namespace LightManager.Client.Services
 {
-    public class SettingsService : ISettingsService
+	public class SettingsService : ISettingsService
     {
         private readonly ILogger<SettingsService> _logger;
-        public SettingsService(ILogger<SettingsService> logger)
+        private readonly HttpClient _httpClient;
+        private readonly IJSRuntime _iJSRuntime;
+        public SettingsService(ILogger<SettingsService> logger, HttpClient httpClient, IJSRuntime jSRuntime)
         {
             _logger = logger;
+            _httpClient = httpClient;
+            _iJSRuntime = jSRuntime;
         }
 
         //public string ImportPath => (await ReadSettingsInternal()).ImportPath;
-        AppSettings ISettingsService.ReadSettings()
+
+        public async Task<AppSettings> ReadSettingsAsync()
         {
-            return ReadSettingsInternal();
+            return await _httpClient.GetFromJsonAsync<AppSettings>("api/Settings/ReadSettings");
         }
 
-        void ISettingsService.WriteSettings(AppSettings appSettings)
+        public async Task WriteSettingsAsync(AppSettings appSettings)
         {
-            //WriteSettingsInternal(appSettings);
+            await _httpClient.PostAsJsonAsync("api/Settings/SaveSettings", appSettings);
         }
 
-        private AppSettings ReadSettingsInternal()
+        public async Task<FolderObject> ReadFolderObjectAsync(string folderPath)
         {
-            return new AppSettings();
+            return await _httpClient.GetFromJsonAsync<FolderObject>($"api/Settings/GetFolder?Path={folderPath}");
         }
 
-        private void WriteSettingsInternal(AppSettings settings)
-        {
-           
+		public async Task<byte[]> ExportDBAsync()
+		{
+            byte[] DBExport = await _httpClient.GetByteArrayAsync("api/Settings/GetDBExport");
+            await _iJSRuntime.InvokeVoidAsync("BlazorDownloadFile", DateTime.Now.ToShortDateString() + "-RDexport.bin", "application/octet-stream", DBExport);
+            return DBExport;
         }
 
-    }
+		//async Task DownloadText()
+		//{
+		//    // Generate a text file
+		//    byte[] file = System.Text.Encoding.UTF8.GetBytes("Hello world!");
+		//    await JSRuntime.InvokeVoidAsync("BlazorDownloadFile", "file.txt", "text/plain", file);
+		//}
+	}
 }

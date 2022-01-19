@@ -51,9 +51,9 @@ RD API key
     *@
 
 
-@if (logs is null)
+@if (logs is null || !logs.Any())
 {
-	<p><em>Loading...</em></p>
+	<p><em>Loading or no logs are available.</em></p>
 }
 else if (logs is not null)
 {

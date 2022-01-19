@@ -11,5 +11,6 @@ namespace LightManager.Shared.Models
         public string? ImportPath { get; set; }
         public string? ExportPath { get; set; }
         public string? RDAPIKey { get; set; }
+        public List<string> SupportedFormats { get; set; } = new List<string>() { "mkv", "mp4" };
     }
 }

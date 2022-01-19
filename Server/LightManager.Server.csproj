@@ -5,7 +5,20 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>1ec2d7e2-3a59-48f2-bc0f-4bda71e06125</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <GenerateDocumentationFile>False</GenerateDocumentationFile>
+    <RuntimeIdentifiers>alpine-x64;win-x64;</RuntimeIdentifiers>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Services\TaskService.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="userConfig.json" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BencodeNET" Version="4.0.0" />
@@ -17,6 +30,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.14.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -25,8 +39,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Data\Imported\" />
-    <Folder Include="Data\Exported\" />
+    <None Include="userConfig.json">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 
