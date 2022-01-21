@@ -28,6 +28,8 @@ using (var context = new TaskDBContext(new DbContextOptions<TaskDBContext>()))
     builder.Services.AddDbContext<TaskDBContext>(x => x.UseSqlite());
 builder.Services.AddLogging();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
+builder.Services.AddScoped<ITasksService, TasksService>();
+builder.Services.AddHttpClient<TasksService>();
 
 
 string CorsOrigins = "CorsOrigins";
@@ -41,9 +43,6 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
-
-
 
 
 // Configure the HTTP request pipeline.

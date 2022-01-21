@@ -2,7 +2,8 @@
 @using LightManager.Shared
 @using LightManager.Shared.Models
 @using System.Web
-@inject HttpClient Http
+@using LightManager.Shared.Services
+@inject ITasksService _TasksService 
 @*
 TODO//
 Get matching .torrent and magnet files and list them and download details ready to approve for upload/download
@@ -25,37 +26,12 @@ RD API key
 <PageTitle>Tasks</PageTitle>
 
 <h1>Tasks</h1>
-@* <EditForm class="container" Model="settings">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
 
-        <div class="form-group">
-            <label for="title">Title</label>
-            <InputText placeholder="/"  @bind-Value="settings.ImportPath" class="form-control"/>
-        </div>
-
-        <div class="form-group">
-            <label for="description">Description</label>
-            <InputTextArea id="description" @bind-Value="SelectedCoffee.Description" placeholder="Description..." class="form-control" rows="7" />
-        </div>
-
-        <div class="row">
-            <div class="col">
-                <button type="submit" class="btn btn-success">Save</button>
-            </div>
-            <div class="col">
-                <button type="button" @onclick="FolderPicker" class="btn btn-danger float-right">Submit</button>
-            </div>
-        </div>
-    </EditForm>
-    *@
-
-
-@if (tasks is null & torrentInfo is null)
+@if (tasks is null)
 {
 	<p><em>Loading...</em></p>
 }
-else if (torrentInfo is null || tasks is not null)
+else if (tasks is not null)
 {
 	<table class="col-md-12 table-bordered table-striped table-condensed cf">
 		<tr>
@@ -76,97 +52,69 @@ else if (torrentInfo is null || tasks is not null)
                 <td>@(string.Concat(@item.MagnetLink.Take(20)))</td>
 			</tr>
 		}
-
-
-
 </table>
-<input type="submit" value="Submit" @onclick=AddSelectedTorrents/>
+
+	<div class="form-group">
+        <input type="submit" value="Refresh" @onclick=GetTorrents/>
+		<input type="submit" value="Download" @onclick=AddSelectedTorrents/>
+        <input type="submit" value="Delete" @onclick=DeleteSelectedTorrents/>
+     </div>
 }
-
-@if (torrentInfo is not null)
-{
-	<table class="col-md-12 table-bordered table-striped table-condensed cf">
-		<tr>
-			<th></th>
-			<th>ID</th>
-			<th>Filename</th>
-            <th>Progress</th>
-		</tr>
-
-		@foreach (var item in torrentInfo)
-		{
-			<tr>
-                <td></td>
-				<td>@item.id</td>
-				<td>@item.filename</td>
-                <td>@item.progress</td>
-            </tr>
-            foreach(var file in @item.files)
-            {
-            <tr>
-				<td><input type="checkbox" @bind-value=file.selected/></td>
-				<td>@file.id</td>
-				<td>@file.path</td>
-                <td></td>
-            </tr>
-            }
-        }
-
-
-
-</table>
-<input type="submit" value="Submit" @onclick=SelectFiles/>
-}
-
 
 
 
 @code {
-    //private string[] logCount = new String[3] { "test", "test2", "test32" };
-    //private LogObject logBject;
-    //private WeatherForecast[]? forecasts;
     private AppSettings? settings = new AppSettings();
-    //private FolderObject? folderObject = new FolderObject();
     private List<TaskItem> tasks = new List<TaskItem>();
-    private List<RDTorrentInfo> torrentInfo = null;
-    //private string Path { get; set; } = "/";
+    //private List<RDTorrentInfo> torrentInfo = null;
 
     protected override async Task OnInitializedAsync()
     {
-        //properties = await Http.GetFromJsonAsync<SystemProperties>("SystemProperties/"+CurrentPath); 
-        //folderObject = await Http.GetFromJsonAsync<FolderObject>($"Tasks?Path={HttpUtility.UrlEncode(Path)}");
-        //Console.WriteLine(folderObject);
-        //await Task.Delay(000);
-        //forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("WeatherForecast"); 
-        await TaskProcessor();
+        tasks = await _TasksService.GetTasks();
     }
-    private async Task TaskProcessor()
+
+
+    private async Task GetTorrents()
     {
-        tasks = await Http.GetFromJsonAsync<List<TaskItem>>($"api/Tasks/GetTasks");
+        tasks = await _TasksService.GetTasks();
+        //var selected = tasks.Where(x => x.Downloaded == true);
+        //foreach(var item in selected)
+        //{
+        //    item.Downloaded = false;
+        //}
+        //tasks = 
         StateHasChanged();
-        //Console.WriteLine(tasks);
+
+    } 
+    private async Task DeleteSelectedTorrents()
+    {
+        await _TasksService.DeleteFiles(tasks);
+        await GetTorrents();
+
+
     }
 
     private async Task AddSelectedTorrents()
     {
-        var downloadTasks = tasks.Where(x => x.Downloaded == true).ToList();
-        HttpResponseMessage responseMessage = await Http.PostAsJsonAsync<List<TaskItem>>("api/Tasks/AddSelected",downloadTasks);
-        Console.WriteLine(await responseMessage.Content.ReadAsStringAsync());
-        //torrentInfo = await responseMessage.Content.ReadFromJsonAsync<List<RDTorrentInfo>>();
-        await TaskProcessor();
-
-        
+        await _TasksService.AddTorrents(tasks);
+        await GetTorrents();
     }
+    //private async Task TaskProcessor()
+    //{
+    //    tasks = await Http.GetFromJsonAsync<List<TaskItem>>($"api/Tasks/GetTasks");
+    //    StateHasChanged();
+    //}
 
-    private async Task SelectFiles()
-    {
-        HttpResponseMessage responseMessage = await Http.PostAsJsonAsync<List<RDTorrentInfo>>("api/Tasks/SelectFiles",torrentInfo);
-        tasks = await Http.GetFromJsonAsync<List<TaskItem>>($"api/Tasks/GetTasks");
-        Console.WriteLine(await responseMessage.Content.ReadAsStringAsync());
-        StateHasChanged();
-        //torrentInfo = await responseMessage.Content.ReadFromJsonAsync<List<RDTorrentInfo>>();
-           // = await files.Content.ReadFromJsonAsync<RDTorrentInfo>();
-    }
+
+
+    //private async Task SelectFiles()
+    //{
+    //    HttpResponseMessage responseMessage = await Http.PostAsJsonAsync<List<RDTorrentInfo>>("api/Tasks/SelectFiles",torrentInfo);
+    //    await _TasksService.SelectFiles(tasks);
+    //    tasks = await _TasksService.GetTasks();
+    //    StateHasChanged();
+
+    //}
 
 
 
