@@ -4,24 +4,6 @@
 @using System.Web
 @using LightManager.Shared.Services
 @inject ITasksService _TasksService 
-@*
-TODO//
-Get matching .torrent and magnet files and list them and download details ready to approve for upload/download
-Collect errors ready for displaying on logs page
-have download progress page with links to any errors.
-
-get torrent and magnet files to vol1 from *arr
-set location in app to where files are stored so it can read them.
-process the files.
-ability to select episodes/files from each file.
-
-
-properties to define - folder location
-where to move torrent files
-RD API key
-
-
-*@
 
 <PageTitle>Tasks</PageTitle>
 
@@ -66,7 +48,6 @@ else if (tasks is not null)
 @code {
     private AppSettings? settings = new AppSettings();
     private List<TaskItem> tasks = new List<TaskItem>();
-    //private List<RDTorrentInfo> torrentInfo = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,12 +58,6 @@ else if (tasks is not null)
     private async Task GetTorrents()
     {
         tasks = await _TasksService.GetTasks();
-        //var selected = tasks.Where(x => x.Downloaded == true);
-        //foreach(var item in selected)
-        //{
-        //    item.Downloaded = false;
-        //}
-        //tasks = 
         StateHasChanged();
 
     } 
@@ -99,23 +74,5 @@ else if (tasks is not null)
         await _TasksService.AddTorrents(tasks);
         await GetTorrents();
     }
-    //private async Task TaskProcessor()
-    //{
-    //    tasks = await Http.GetFromJsonAsync<List<TaskItem>>($"api/Tasks/GetTasks");
-    //    StateHasChanged();
-    //}
-
-
-
-    //private async Task SelectFiles()
-    //{
-    //    HttpResponseMessage responseMessage = await Http.PostAsJsonAsync<List<RDTorrentInfo>>("api/Tasks/SelectFiles",torrentInfo);
-    //    await _TasksService.SelectFiles(tasks);
-    //    tasks = await _TasksService.GetTasks();
-    //    StateHasChanged();
-
-    //}
-
-
 
 }

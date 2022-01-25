@@ -48,20 +48,7 @@ namespace LightManager.Server.Services
                     return torrentFileInfo;
 
                 }
-
-                //else loop and check api until its ready and return that.
-
             }
-
-            //Grab file info and if multifile do something to select file IDs and cont or return to select them.
-            //Now need a whole new table/UI for displaying possible multiple files.
-
-
-            //With the returned submitted ID, youll need to select the files here, or return them to UI for selection?
-            //int fileNum = addTorrent.files.Where(x => x.path.Contains(".mkv")).Select(x => x.id).SingleOrDefault();
-            //2-3
-            //HttpResponseMessage RDSelectResponse = await RDApi(_httpClient, RDAddContent.id, fileNum.ToString());
-            //string RDSelectObject = await RDSelectResponse.Content.ReadAsStringAsync();
 
             return torrentFileInfo;
         }
@@ -104,13 +91,8 @@ namespace LightManager.Server.Services
 
         private async Task<string> GetMagnet(FileInfo file)
         {
-            //var fileData = await new StreamReader(filePath).ReadToEndAsync();
             var parser = new BencodeParser();
-            //var stream = new StreamReader(file.FullName).BaseStream;
             string magnetLink;
-            //var torrent = new Torrent();
-            //var t = new BencodeNET.IO.BencodeReader(fileData.BaseStream);
-            //torrent.GetMagnetLink()
             try
             {
                 if (file.Extension.ToLower() == ".torrent")
