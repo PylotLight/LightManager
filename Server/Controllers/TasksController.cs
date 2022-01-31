@@ -1,14 +1,12 @@
-using BencodeNET.Parsing;
-using BencodeNET.Torrents;
 using LightManager.Server.Context;
 using LightManager.Shared.Models;
 using LightManager.Shared.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Net.Http.Headers;
-using System.Web;
 
 namespace LightManager.Server.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]/[action]")]
     public class TasksController : ControllerBase

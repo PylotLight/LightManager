@@ -1,9 +1,11 @@
 using LightManager.Shared.Models;
 using LightManager.Shared.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LightManager.Server.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]/[action]")]
     public class SettingsController : ControllerBase

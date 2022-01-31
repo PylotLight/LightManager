@@ -22,7 +22,7 @@ RUN dotnet build "LightManager.Server.csproj" -c Release -o /app/build
 #
 FROM build AS publish
 #RUN dotnet publish "LightManager.Server.csproj" -c Release -o /app/publish
-RUN dotnet publish "LightManager.Server.csproj" -c Release -o /app/publish -r alpine-x64 --self-contained true --no-restore
+RUN dotnet publish "LightManager.Server.csproj" -c Release -o /app/publish -r alpine-x64 --self-contained true --no-restore 
 #
 FROM base AS final
 WORKDIR /app
