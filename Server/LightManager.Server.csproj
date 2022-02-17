@@ -10,11 +10,9 @@
     <RuntimeIdentifiers>alpine-x64;win-x64;</RuntimeIdentifiers>
     <PublishSingleFile>true</PublishSingleFile>
     <IsTrimmable>true</IsTrimmable>
-    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Pages\_Host.cshtml.cs" />
     <Compile Remove="Services\TaskService.cs" />
   </ItemGroup>
 
@@ -23,14 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Pages\_Host.cshtml.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="BencodeNET" Version="4.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="6.0.1" />
-    <PackageReference Include="Microsoft.Identity.Web" Version="1.22.2" />
-    <PackageReference Include="Microsoft.Identity.Web.UI" Version="1.22.2" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="6.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.1" />

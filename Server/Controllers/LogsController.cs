@@ -1,13 +1,11 @@
 using LightManager.Server.Context;
 using LightManager.Shared.Models;
 using LightManager.Shared.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LightManager.Server.Controllers
 {
-    [Authorize]
-    [ApiController]
+	[ApiController]
     [Route("api/[controller]/[action]")]
     public class LogsController : ControllerBase
     {
