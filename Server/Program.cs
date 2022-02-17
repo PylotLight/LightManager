@@ -64,6 +64,11 @@ app.UseStaticFiles();
 
 app.UseRouting();
 app.UseCors(CorsOrigins);
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllers();
+    endpoints.MapRazorPages();
+});
 app.MapRazorPages();
 app.MapControllers();
 //app.MapFallbackToFile("index.html");

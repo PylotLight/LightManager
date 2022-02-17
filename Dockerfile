@@ -28,3 +28,5 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["./LightManager.Server"]
+# docker build -t light37/lightmanager:latest -f Dockerfile .
+# docker push light37/lightmanager:latest
